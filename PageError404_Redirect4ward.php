@@ -3,11 +3,11 @@
 /**
  * @copyright 	4ward.media 2012 <http://www.4wardmedia.de>
  * @author 		Christoph Wiechert <wio@psitrax.de>
- * @license    	LGPL
+ * @license		LGPL
  * @package 	redirect4ward
  * @filesource
  */
- 
+
 class PageError404_Redirect4ward extends \PageError404
 {
 
@@ -31,11 +31,15 @@ class PageError404_Redirect4ward extends \PageError404
 			$url = (strpos($url, '?') === false) ? $url : substr($url, 0,strpos($url, '?'));
 		}
 
-		// Kill trialing /
+		// Kill trailing slash
 		if(substr($url,-1) == '/') $url = substr($url,0,-1);
 
 		// decode url
 		$url = urldecode($url);
+		if (strstr($url, 'app_dev.php')) {
+			// Remove dev front controller if there
+			$url = str_replace('app_dev.php/', '', $url);
+		}
 
 		$objTarget = $this->Database->prepare('	SELECT jumpTo,jumpToML,type,jumpToType,externalUrl,url,rgxp
 												FROM tl_redirect4ward
@@ -48,7 +52,7 @@ class PageError404_Redirect4ward extends \PageError404
 												ORDER BY priority, url'
 											)
 						->limit(1)->execute('1',$url,$url,$this->Environment->host,$this->Environment->host);
-		
+
 
 		if($objTarget->numRows > 0)
 		{
@@ -72,9 +76,9 @@ class PageError404_Redirect4ward extends \PageError404
 				$arrRedirectSettings = deserialize($objTarget->jumpToML);
 				$mixJumpTo = '';
 				$mixJumpToFallback = '';
-                $mixParameters = '';
-                $mixParametersFallback = '';
-				
+				$mixParameters = '';
+				$mixParametersFallback = '';
+
 				// Search jump to
 				foreach ($arrRedirectSettings as $arrSetting)
 				{
@@ -82,44 +86,44 @@ class PageError404_Redirect4ward extends \PageError404
 					if($arrSetting['language'] == 'fallback')
 					{
 						$mixJumpToFallback = $arrSetting['jumpTo'];
-                        $mixParametersFallback = $arrSetting['parameters'];
+						$mixParametersFallback = $arrSetting['parameters'];
 					}
-					
+
 					// Search current language
 					if($GLOBALS['TL_LANGUAGE'] == $arrSetting['language'])
 					{
 						$mixJumpTo = $arrSetting['jumpTo'];
-                        $mixParameters = $arrSetting['parameters'];
+						$mixParameters = $arrSetting['parameters'];
 					}
 				}
-				
+
 				// No fallback, no language .... return;
 				if($mixJumpTo == '' && $mixJumpToFallback == '')
 				{
 					return;
 				}
-				
+
 				// Return if we have no jump to
 				if($mixJumpTo == '')
 				{
 					$mixJumpTo = $mixJumpToFallback;
-                    $mixParameters = $mixParametersFallback;
+					$mixParameters = $mixParametersFallback;
 				}
-				
-				// Get ID from inserttag 
-				// ToDo: PagePicker is not the right one. 
+
+				// Get ID from inserttag
+				// ToDo: PagePicker is not the right one.
 				$mixJumpTo = str_replace(array('{{', '}}', 'link_url::'), array('', '', ''), $mixJumpTo);
 
-				// Redirect to internal jumpTo page				
+				// Redirect to internal jumpTo page
 				$objJumpTo = $this->Database->prepare("SELECT id, alias FROM tl_page WHERE id=?")->limit(1)->execute($mixJumpTo);
-				                
+
 				if ($objJumpTo->numRows)
 				{
 					$type = ($objTarget->type=='301')?'301':'303'; // TL knows only "303: see other", no "307: temporary"
 
 					// set objPage cause we need the rootLanguage there for generateFrontendUrl
 					$GLOBALS['objPage'] = $this->getPageDetails($objJumpTo->id);
-                    
+
 					$this->redirect($this->generateFrontendUrl($objJumpTo->row(), html_entity_decode($mixParameters)),$type);
 				}
 			}
@@ -142,7 +146,7 @@ class PageError404_Redirect4ward extends \PageError404
 
 				// Redirect to external page
 				$type = ($objTarget->type == '301') ? '301' : '303'; // TL knows only "303: see other", no "307: temporary"
-                $this->redirect($targetURL, $type);
+				$this->redirect($targetURL, $type);
 			}
 		}
 		else if($GLOBALS['TL_CONFIG']['redirect4wardAvoid404'])
